@@ -1,7 +1,8 @@
 mod fuse;
+mod tree;
 mod treesitter;
 
 fn main() {
-    crate::treesitter::run();
+    dbg!(crate::treesitter::get_tree());
     crate::fuse::run();
 }

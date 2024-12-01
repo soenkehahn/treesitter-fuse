@@ -6,3 +6,5 @@ edition = "2021"
 [dependencies]
 fuser = "0.15.1"
 libc = "0.2.167"
+tree-sitter = "0.24.4"
+tree-sitter-rust = "0.23.2"

@@ -1,3 +1,4 @@
+use crate::tree::Tree;
 use fuser::FileAttr;
 use fuser::FileType;
 use fuser::Filesystem;
@@ -11,21 +12,41 @@ use std::ffi::OsStr;
 use std::time::Duration;
 use std::time::UNIX_EPOCH;
 
-pub fn run() {
+pub fn run(tree: Tree) {
     eprintln!("mounting on /tmp/mnt");
     fuser::mount2(
-        HelloFS,
+        TreeFs(Tree::Node {
+            id: 1,
+            name: "root".to_owned(),
+            children: vec![tree],
+        }),
         "/tmp/mnt",
         &vec![MountOption::AutoUnmount, MountOption::DefaultPermissions],
     )
     .unwrap();
 }
 
-struct HelloFS;
+#[derive(Debug)]
+struct TreeFs(Tree);
 
-impl Filesystem for HelloFS {
+impl TreeFs {
+    fn tree_to_file_type(tree: &Tree) -> FileType {
+        match tree {
+            Tree::Node { .. } => FileType::Directory,
+            Tree::Leaf { .. } => FileType::RegularFile,
+        }
+    }
+}
+
+impl Filesystem for TreeFs {
     fn getattr(&mut self, _req: &Request<'_>, ino: u64, _fh: Option<u64>, reply: ReplyAttr) {
         eprintln!("getattr: {:?}", ino);
+        let file_type = match self.0.get_by_id(ino) {
+            None => {
+                todo!();
+            }
+            Some(tree) => TreeFs::tree_to_file_type(&tree),
+        };
         let attr = FileAttr {
             ino,
             size: 13,
@@ -34,11 +55,7 @@ impl Filesystem for HelloFS {
             mtime: UNIX_EPOCH,
             ctime: UNIX_EPOCH,
             crtime: UNIX_EPOCH,
-            kind: match ino {
-                1 => FileType::Directory,
-                42 => FileType::RegularFile,
-                _ => FileType::RegularFile,
-            },
+            kind: file_type,
             perm: 0o755,
             nlink: 1,
             uid: 1000,
@@ -58,42 +75,59 @@ impl Filesystem for HelloFS {
         offset: i64,
         mut reply: ReplyDirectory,
     ) {
-        eprintln!("readdir");
-        dbg!(offset);
-        match ino {
-            1 => match offset {
-                0 => {
-                    reply.add(42, 1, FileType::RegularFile, "foo");
+        eprintln!("readdir - offset: {:?}", offset);
+        match offset {
+            0 => match self.0.get_by_id(ino) {
+                Some(Tree::Node { children, .. }) => {
+                    for child in children {
+                        assert!(!reply.add(
+                            child.id(),
+                            1,
+                            TreeFs::tree_to_file_type(child),
+                            child.name()
+                        ));
+                    }
                     reply.ok();
                 }
-                _ => {
-                    reply.ok();
-                }
+                _ => todo!(),
             },
-            _ => reply.error(libc::ENOENT),
+            _ => reply.ok(),
         }
     }
 
     fn lookup(&mut self, _req: &Request<'_>, parent: u64, name: &OsStr, reply: ReplyEntry) {
         eprintln!("lookup: {:?} / {:?}", parent, name);
-        let attr = FileAttr {
-            ino: 42,
-            size: 13,
-            blocks: 1,
-            atime: UNIX_EPOCH,
-            mtime: UNIX_EPOCH,
-            ctime: UNIX_EPOCH,
-            crtime: UNIX_EPOCH,
-            kind: FileType::RegularFile,
-            perm: 0o755,
-            nlink: 1,
-            uid: 1000,
-            gid: 1000,
-            rdev: 0,
-            flags: 0,
-            blksize: 512,
-        };
-        reply.entry(&Duration::from_secs(0), &attr, 0);
+        match self.0.get_by_id(parent) {
+            Some(Tree::Node { children, .. }) => {
+                let child = children
+                    .iter()
+                    .find(|child| child.name() == &name.to_string_lossy());
+                match child {
+                    Some(child) => {
+                        let attr = FileAttr {
+                            ino: child.id(),
+                            size: 13,
+                            blocks: 1,
+                            atime: UNIX_EPOCH,
+                            mtime: UNIX_EPOCH,
+                            ctime: UNIX_EPOCH,
+                            crtime: UNIX_EPOCH,
+                            kind: TreeFs::tree_to_file_type(child),
+                            perm: 0o755,
+                            nlink: 1,
+                            uid: 1000,
+                            gid: 1000,
+                            rdev: 0,
+                            flags: 0,
+                            blksize: 512,
+                        };
+                        reply.entry(&Duration::from_secs(0), &attr, 0);
+                    }
+                    None => reply.error(libc::ENOENT),
+                }
+            }
+            _ => todo!(),
+        }
     }
 
     fn read(
@@ -101,14 +135,16 @@ impl Filesystem for HelloFS {
         _req: &Request,
         ino: u64,
         _fh: u64,
-        offset: i64,
-        size: u32,
+        _offset: i64,
+        _size: u32,
         _flags: i32,
         _lock: Option<u64>,
         reply: ReplyData,
     ) {
         eprintln!("read");
-        dbg!((ino, offset, size));
-        reply.data("huhu".as_bytes());
+        match self.0.get_by_id(ino) {
+            Some(Tree::Leaf { contents, .. }) => reply.data(contents.as_bytes()),
+            _ => todo!(),
+        }
     }
 }

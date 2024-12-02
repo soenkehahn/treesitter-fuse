@@ -3,6 +3,7 @@ mod tree;
 mod treesitter;
 
 fn main() {
-    dbg!(crate::treesitter::get_tree());
-    crate::fuse::run();
+    let tree = crate::treesitter::get_tree();
+    dbg!(&tree);
+    crate::fuse::run(tree);
 }

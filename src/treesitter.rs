@@ -11,7 +11,9 @@ pub fn get_tree() -> Tree {
         .expect("Error loading Rust parser");
     let code = fs::read_to_string("./src/main.rs").unwrap();
     let tree = parser.parse(&code, None).unwrap();
-    to_tree(&code, tree.root_node())
+    let mut tree = to_tree(&code, tree.root_node());
+    tree.uniquify_names();
+    tree
 }
 
 fn to_tree(code: &str, node: Node) -> Tree {
@@ -22,10 +24,13 @@ fn to_tree(code: &str, node: Node) -> Tree {
     }
     if children.is_empty() {
         Tree::Leaf {
+            id: node.id().try_into().unwrap(),
+            name: node.grammar_name().to_owned(),
             contents: node.utf8_text(code.as_bytes()).unwrap().to_owned(),
         }
     } else {
         Tree::Node {
+            id: node.id().try_into().unwrap(),
             name: node.grammar_name().to_owned(),
             children,
         }

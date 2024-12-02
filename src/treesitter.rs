@@ -1,3 +1,4 @@
+use crate::tree::Contents;
 use crate::tree::Tree;
 use std::fs;
 use tree_sitter::Node;
@@ -22,17 +23,13 @@ fn to_tree(code: &str, node: Node) -> Tree {
     for child in node.children(&mut cursor) {
         children.push(to_tree(code, child));
     }
-    if children.is_empty() {
-        Tree::Leaf {
-            id: node.id().try_into().unwrap(),
-            name: node.grammar_name().to_owned(),
-            contents: node.utf8_text(code.as_bytes()).unwrap().to_owned(),
-        }
-    } else {
-        Tree::Node {
-            id: node.id().try_into().unwrap(),
-            name: node.grammar_name().to_owned(),
-            children,
-        }
+    Tree {
+        id: node.id().try_into().unwrap(),
+        name: node.grammar_name().to_owned(),
+        contents: if children.is_empty() {
+            Contents::Leaf(node.utf8_text(code.as_bytes()).unwrap().to_owned())
+        } else {
+            Contents::Node(children)
+        },
     }
 }

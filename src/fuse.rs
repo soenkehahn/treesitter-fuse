@@ -1,3 +1,4 @@
+use crate::tree::Contents;
 use crate::tree::Tree;
 use fuser::FileAttr;
 use fuser::FileType;
@@ -15,10 +16,10 @@ use std::time::UNIX_EPOCH;
 pub fn run(tree: Tree) {
     eprintln!("mounting on /tmp/mnt");
     fuser::mount2(
-        TreeFs(Tree::Node {
+        TreeFs(Tree {
             id: 1,
             name: "root".to_owned(),
-            children: vec![tree],
+            contents: Contents::Node(vec![tree]),
         }),
         "/tmp/mnt",
         &vec![MountOption::AutoUnmount, MountOption::DefaultPermissions],
@@ -31,9 +32,9 @@ struct TreeFs(Tree);
 
 impl TreeFs {
     fn tree_to_file_type(tree: &Tree) -> FileType {
-        match tree {
-            Tree::Node { .. } => FileType::Directory,
-            Tree::Leaf { .. } => FileType::RegularFile,
+        match tree.contents {
+            Contents::Node(_) => FileType::Directory,
+            Contents::Leaf(_) => FileType::RegularFile,
         }
     }
 }
@@ -78,13 +79,16 @@ impl Filesystem for TreeFs {
         eprintln!("readdir - offset: {:?}", offset);
         match offset {
             0 => match self.0.get_by_id(ino) {
-                Some(Tree::Node { children, .. }) => {
+                Some(Tree {
+                    contents: Contents::Node(children),
+                    ..
+                }) => {
                     for child in children {
                         assert!(!reply.add(
-                            child.id(),
+                            child.id,
                             1,
                             TreeFs::tree_to_file_type(child),
-                            child.name()
+                            &child.name
                         ));
                     }
                     reply.ok();
@@ -98,14 +102,17 @@ impl Filesystem for TreeFs {
     fn lookup(&mut self, _req: &Request<'_>, parent: u64, name: &OsStr, reply: ReplyEntry) {
         eprintln!("lookup: {:?} / {:?}", parent, name);
         match self.0.get_by_id(parent) {
-            Some(Tree::Node { children, .. }) => {
+            Some(Tree {
+                contents: Contents::Node(children),
+                ..
+            }) => {
                 let child = children
                     .iter()
-                    .find(|child| child.name() == &name.to_string_lossy());
+                    .find(|child| child.name == name.to_string_lossy());
                 match child {
                     Some(child) => {
                         let attr = FileAttr {
-                            ino: child.id(),
+                            ino: child.id,
                             size: 13,
                             blocks: 1,
                             atime: UNIX_EPOCH,
@@ -143,7 +150,10 @@ impl Filesystem for TreeFs {
     ) {
         eprintln!("read");
         match self.0.get_by_id(ino) {
-            Some(Tree::Leaf { contents, .. }) => reply.data(contents.as_bytes()),
+            Some(Tree {
+                contents: Contents::Leaf(string),
+                ..
+            }) => reply.data(string.as_bytes()),
             _ => todo!(),
         }
     }

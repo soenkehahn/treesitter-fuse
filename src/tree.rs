@@ -1,46 +1,24 @@
 #[derive(Debug)]
-pub enum Tree {
-    Leaf {
-        id: u64,
-        name: String,
-        contents: String,
-    },
-    Node {
-        id: u64,
-        name: String,
-        children: Vec<Tree>,
-    },
+pub enum Contents {
+    Leaf(String),
+    Node(Vec<Tree>),
+}
+
+#[derive(Debug)]
+pub struct Tree {
+    pub id: u64,
+    pub name: String,
+    pub contents: Contents,
 }
 
 impl Tree {
-    pub fn id(&self) -> u64 {
-        match self {
-            Tree::Leaf { id, .. } => *id,
-            Tree::Node { id, .. } => *id,
-        }
-    }
-
-    pub fn name(&self) -> &str {
-        match self {
-            Tree::Leaf { name, .. } => name,
-            Tree::Node { name, .. } => name,
-        }
-    }
-
-    pub fn name_mut(&mut self) -> &mut String {
-        match self {
-            Tree::Leaf { name, .. } => name,
-            Tree::Node { name, .. } => name,
-        }
-    }
-
     pub fn get_by_id(&self, id: u64) -> Option<&Tree> {
-        if self.id() == id {
+        if self.id == id {
             return Some(self);
         }
-        match self {
-            Tree::Leaf { .. } => None,
-            Tree::Node { children, .. } => {
+        match &self.contents {
+            Contents::Leaf(_) => None,
+            Contents::Node(children) => {
                 for child in children {
                     if let Some(found) = child.get_by_id(id) {
                         return Some(found);
@@ -52,14 +30,14 @@ impl Tree {
     }
 
     pub fn uniquify_names(&mut self) {
-        match self {
-            Tree::Node { children, .. } => {
+        match self.contents {
+            Contents::Node(ref mut children) => {
                 for (i, child) in children.iter_mut().enumerate() {
-                    child.name_mut().insert_str(0, &format!("{i}-"));
+                    child.name.insert_str(0, &format!("{i}-"));
                     child.uniquify_names();
                 }
             }
-            Tree::Leaf { .. } => {}
+            Contents::Leaf(_) => {}
         }
     }
 }

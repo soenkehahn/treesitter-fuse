@@ -6,9 +6,9 @@ pub enum Contents {
 
 #[derive(Debug)]
 pub struct Tree {
-    pub(crate) id: u64,
-    pub(crate) name: String,
-    pub(crate) contents: Contents,
+    pub id: u64,
+    pub name: String,
+    pub contents: Contents,
 }
 
 impl Tree {

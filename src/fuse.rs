@@ -88,7 +88,7 @@ impl Filesystem for TreeFs {
                             child.id,
                             1,
                             TreeFs::tree_to_file_type(child),
-                            child.name.to_owned()
+                            &child.name
                         ));
                     }
                     reply.ok();

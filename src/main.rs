@@ -9,11 +9,13 @@ use std::path::PathBuf;
 struct Args {
     #[arg(long)]
     path: PathBuf,
+    #[arg(long)]
+    mount_point: PathBuf,
 }
 
 fn main() {
     let args = Args::parse();
     let tree = crate::treesitter::get_tree(&args.path);
     dbg!(&tree);
-    crate::fuse::run(tree);
+    crate::fuse::run(tree, &args.mount_point);
 }

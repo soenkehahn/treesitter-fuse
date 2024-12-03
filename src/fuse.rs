@@ -9,18 +9,19 @@ use fuser::ReplyDirectory;
 use fuser::ReplyEntry;
 use fuser::Request;
 use std::ffi::OsStr;
+use std::path::Path;
 use std::time::Duration;
 use std::time::UNIX_EPOCH;
 
-pub fn run(tree: Tree) {
-    eprintln!("mounting on /tmp/mnt");
+pub fn run(tree: Tree, mount_point: &Path) {
+    eprintln!("mounting on {}", mount_point.to_string_lossy());
     fuser::mount2(
         TreeFs(Tree::Node {
             id: 1,
             name: "root".to_owned(),
             children: vec![tree],
         }),
-        "/tmp/mnt",
+        mount_point,
         &vec![MountOption::AutoUnmount, MountOption::DefaultPermissions],
     )
     .unwrap();

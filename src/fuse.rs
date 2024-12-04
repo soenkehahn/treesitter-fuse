@@ -41,7 +41,6 @@ impl TreeFs {
 
 impl Filesystem for TreeFs {
     fn getattr(&mut self, _req: &Request<'_>, ino: u64, _fh: Option<u64>, reply: ReplyAttr) {
-        eprintln!("getattr: {:?}", ino);
         let file_type = match self.0.get_by_id(ino) {
             None => {
                 todo!();
@@ -76,7 +75,6 @@ impl Filesystem for TreeFs {
         offset: i64,
         mut reply: ReplyDirectory,
     ) {
-        eprintln!("readdir - offset: {:?}", offset);
         match offset {
             0 => match self.0.get_by_id(ino) {
                 Some(Tree {
@@ -100,7 +98,6 @@ impl Filesystem for TreeFs {
     }
 
     fn lookup(&mut self, _req: &Request<'_>, parent: u64, name: &OsStr, reply: ReplyEntry) {
-        eprintln!("lookup: {:?} / {:?}", parent, name);
         match self.0.get_by_id(parent) {
             Some(Tree {
                 contents: Contents::Node(children),
@@ -148,7 +145,6 @@ impl Filesystem for TreeFs {
         _lock: Option<u64>,
         reply: ReplyData,
     ) {
-        eprintln!("read");
         match self.0.get_by_id(ino) {
             Some(Tree {
                 contents: Contents::Leaf(string),

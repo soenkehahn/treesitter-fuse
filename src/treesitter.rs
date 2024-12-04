@@ -1,16 +1,17 @@
 use crate::tree::Contents;
 use crate::tree::Tree;
 use std::fs;
+use std::path::Path;
 use tree_sitter::Node;
 use tree_sitter::Parser;
 
-pub fn get_tree() -> Tree {
+pub fn get_tree(path: &Path) -> Tree {
     let mut parser = Parser::new();
     let language = tree_sitter_rust::LANGUAGE;
     parser
         .set_language(&language.into())
         .expect("Error loading Rust parser");
-    let code = fs::read_to_string("./src/main.rs").unwrap();
+    let code = fs::read_to_string(path).unwrap();
     let tree = parser.parse(&code, None).unwrap();
     let mut tree = to_tree(&code, tree.root_node());
     tree.uniquify_names();
